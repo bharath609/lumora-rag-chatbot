@@ -1,14 +1,20 @@
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 
 async function request(path, options = {}, accessToken = '') {
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...(options.headers || {}),
-    },
-  })
+  let response
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers: {
+        ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...(options.headers || {}),
+      },
+    })
+  } catch (error) {
+    const target = API_BASE || window.location.origin
+    throw new Error(`Cannot reach the Lumora API at ${target}. Check your connection and try again.`, { cause: error })
+  }
 
   if (!response.ok) {
     let detail = `Request failed (${response.status})`

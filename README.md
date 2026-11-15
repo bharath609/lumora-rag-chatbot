@@ -131,6 +131,23 @@ Unauthenticated visitors cannot list, upload, query, or clear a library. The
 configured Chroma Cloud index remains required for durable indexed data because
 the Render filesystem is not permanent.
 
+### Troubleshooting "Failed to fetch" on sign-in
+
+`Failed to fetch` means the browser could not reach the Supabase project at
+`VITE_SUPABASE_URL`; it is not a bad password error. To confirm:
+
+```bash
+nslookup <project-ref>.supabase.co 8.8.8.8
+curl https://<project-ref>.supabase.co/auth/v1/health
+```
+
+If DNS returns NXDOMAIN, the project is paused, being restored, or its DNS
+record is missing. Resume/restore it in the Supabase dashboard, wait for the
+status to return to Healthy, then reload the site. If the project looks healthy
+but NXDOMAIN persists, open a Supabase support ticket with the project ref. After
+changing either Supabase secret, re-run the Pages workflow so the new values are
+compiled into the bundle, and update the matching Render variables too.
+
 ## Supported documents
 
 The API extracts text from PDF, DOCX, PPTX, XLS/XLSX/XLSM, CSV/TSV, HTML, JSON,

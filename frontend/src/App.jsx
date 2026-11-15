@@ -168,6 +168,12 @@ function AnswerText({ text, onCite }) {
 
 function friendlyError(message) {
   const text = String(message || 'The retrieval service could not answer. Try again.')
+  if (/cannot reach|could not reach|failed to fetch|networkerror|load failed/i.test(text)) {
+    return {
+      title: 'Service unreachable',
+      body: 'Lumora could not reach its API or authentication service. Check your connection, then reload. If sign-in keeps failing, the Supabase project may be paused or restoring.',
+    }
+  }
   if (/gemini api.*(?:503|temporarily unavailable)|temporarily unavailable.*gemini/i.test(text)) {
     return {
       title: 'Gemini is temporarily busy',

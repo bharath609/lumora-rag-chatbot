@@ -2,6 +2,23 @@ import { useState } from 'react'
 import { appUrl, supabase } from './supabase'
 import './styles.css'
 
+const NETWORK_ERROR = /failed to fetch|load failed|networkerror|network request failed|fetch failed|err_name_not_resolved|name not resolved/i
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+function friendlyAuthError(message) {
+  const text = String(message || '').trim()
+  if (NETWORK_ERROR.test(text)) {
+    return 'Cannot reach the authentication service. The Supabase project may be paused or still restoring, or your network may be blocking it. Check the project status in Supabase, then try again.'
+  }
+  if (/invalid login credentials/i.test(text)) return 'That email and password do not match an account.'
+  if (/email not confirmed/i.test(text)) return 'Confirm your email address from the link in your inbox before signing in.'
+  if (/user already registered/i.test(text)) return 'An account with that email already exists. Sign in instead.'
+  if (/rate limit|too many requests|email_send_rate_limit/i.test(text)) return 'Too many attempts. Wait a minute and try again.'
+  if (/password should be at least/i.test(text)) return 'Use a password with at least 6 characters.'
+  return text || 'Authentication failed. Please try again.'
+}
+
 export default function AuthView({ onSignedIn, setupError }) {
   const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
@@ -27,12 +44,19 @@ export default function AuthView({ onSignedIn, setupError }) {
         if (data.session) onSignedIn?.(data.session)
         else setMessage('Account created. Open the confirmation link on this same device and browser, then sign in.')
       } else {
-        const { data, error: signinError } = await supabase.auth.signInWithPassword({ email, password })
+        let result = await supabase.auth.signInWithPassword({ email, password })
+        // A dropped DNS/network lookup is usually transient. Retry once before
+        // surfacing the error so a short Supabase blip does not block sign-in.
+        if (result.error && NETWORK_ERROR.test(result.error.message || '')) {
+          await sleep(900)
+          result = await supabase.auth.signInWithPassword({ email, password })
+        }
+        const { data, error: signinError } = result
         if (signinError) throw signinError
         if (data.session) onSignedIn?.(data.session)
       }
     } catch (authError) {
-      setError(authError.message || 'Authentication failed. Please try again.')
+      setError(friendlyAuthError(authError?.message))
     } finally {
       setBusy(false)
     }
